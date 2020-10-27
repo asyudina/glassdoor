@@ -12,6 +12,8 @@ keyword - str
     keyword for job search
 location - str
     location for job search
+num_jobs - int
+    number of jobs to scrap
 verbose - bool
     True if need to print detailed results while parsing
 
