@@ -2,7 +2,7 @@ from selenium.common.exceptions import NoSuchElementException, ElementClickInter
 from selenium import webdriver
 import time
 import pandas as pd
-
+import csv
 
 def get_jobs(driver_path,keyword,location, num_jobs, verbose,filename):
     
@@ -12,7 +12,7 @@ def get_jobs(driver_path,keyword,location, num_jobs, verbose,filename):
     options = webdriver.ChromeOptions()
     
     #Uncomment the line below if you'd like to scrape without a new Chrome window every time.
-#    options.add_argument('headless') #-- note that this mode is slower
+    options.add_argument('headless') #-- note that this mode is slower
     #Change the path to where chromedriver is in your home folder.
     driver = webdriver.Chrome(driver_path, options=options)
     driver.set_window_size(1120, 1000)
@@ -33,6 +33,7 @@ def get_jobs(driver_path,keyword,location, num_jobs, verbose,filename):
     jobs = []
     
     cols = '''Job Title
+    URL
     Salary Estimate
     Job Description
     Rating
@@ -114,19 +115,30 @@ def get_jobs(driver_path,keyword,location, num_jobs, verbose,filename):
                     pass
 
                 job_button.click()  #You might
-                print('clicked')
+#                print('clicked')
                 time.sleep(1)
                 collected_successfully = False
-
+                trials = 0
                 while not collected_successfully:
-                    try:
-                        company_name = driver.find_element_by_xpath('.//div[@class="employerName"]').text.split()[0]
-                        location = driver.find_element_by_xpath('.//div[@class="location"]').text
-                        job_title = driver.find_element_by_xpath('.//div[contains(@class, "title")]').text
-                        job_description = driver.find_element_by_xpath('.//div[@class="jobDescriptionContent desc"]').text
+                    if trials<5:
+                        try:
+                            company_name = driver.find_element_by_xpath('.//div[@class="employerName"]').text.split()[0]
+                            location = driver.find_element_by_xpath('.//div[@class="location"]').text
+                            job_title = driver.find_element_by_xpath('.//div[contains(@class, "title")]').text
+                            job_description = driver.find_element_by_xpath('.//div[@class="jobDescriptionContent desc"]').text
+                            collected_successfully = True
+
+                        except:
+                            time.sleep(5)
+                            trials +=1
+                    else:
+                        company_name=-1
+                        location =-1
+                        job_title =-1
+                        job_description =-1
                         collected_successfully = True
-                    except:
-                        time.sleep(5)
+                        
+                url = job_button.find_element_by_css_selector('a.jobInfoItem').get_attribute('href')
                 try:
                     salary_estimate = driver.find_element_by_xpath('.//div[@class="salary"]').text
                 except NoSuchElementException:
@@ -207,6 +219,7 @@ def get_jobs(driver_path,keyword,location, num_jobs, verbose,filename):
                 if company_name not in jcomps.keys():   
                     jcomps[company_name] = [job_title]
                     jobs.append({"Job Title" : job_title,
+                    "URL" : url,            
                     "Salary Estimate" : salary_estimate,
                     "Job Description" : job_description,
                     "Rating" : rating,
@@ -225,6 +238,7 @@ def get_jobs(driver_path,keyword,location, num_jobs, verbose,filename):
                     if job_title not in jcomps[company_name]:
                         jcomps[company_name].append(job_title)
                         jobs.append({"Job Title" : job_title,
+                        "URL" : url,               
                         "Salary Estimate" : salary_estimate,
                         "Job Description" : job_description,
                         "Rating" : rating,
@@ -240,7 +254,7 @@ def get_jobs(driver_path,keyword,location, num_jobs, verbose,filename):
                         with open(filename, 'a') as f:
                             csv.writer(f, delimiter='|').writerow(pst)
                     else:
-                        print('doubled!!')
+#                        print('doubled!!')
                         continue
                 
                 i+=1    
@@ -256,7 +270,6 @@ def get_jobs(driver_path,keyword,location, num_jobs, verbose,filename):
                 break
         except:
             continue
+    driver.quit()
 
     return pd.DataFrame(jobs)  #This line converts the dictionary object into a pandas DataFrame.
-
-
